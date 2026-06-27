@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Check, ShieldCheck, Truck, Clock, ArrowLeft, Search, CheckCircle2, Package } from "lucide-react";
 import { cn } from "../lib/utils";
 import productImage from "../assets/images/medical_scrubs_white_1782522892178.jpg";
+import { db } from "../lib/firebase";
+import { collection, addDoc, getDoc, doc } from "firebase/firestore";
 
 const COLORS = [
   { id: "charcoal", name: "رمادي", hex: "#374151", filter: "saturate(0) brightness(0.5)" },
@@ -53,24 +55,21 @@ export default function Home() {
         ? `${selectedWilaya} - ${selectedCommune}\n${address}`
         : selectedWilaya;
 
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerName: name,
-          phone,
-          address: fullAddress,
-          deliveryMethod,
-          color: selectedColor.name,
-          size: selectedSize,
-          cod: true
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSuccessOrder(data);
-        setIsSuccess(true);
-      }
+      const orderData = {
+        customerName: name,
+        phone,
+        address: fullAddress,
+        deliveryMethod,
+        color: selectedColor.name,
+        size: selectedSize,
+        cod: true,
+        status: "pending",
+        createdAt: new Date().toISOString()
+      };
+
+      const docRef = await addDoc(collection(db, "orders"), orderData);
+      setSuccessOrder({ id: docRef.id, ...orderData });
+      setIsSuccess(true);
     } catch (error) {
       console.error(error);
     } finally {
@@ -83,12 +82,16 @@ export default function Home() {
     if (!trackingId.trim()) return;
     setIsSearching(true);
     try {
-      const res = await fetch("/api/orders");
-      const orders = await res.json();
-      const order = orders.find((o: any) => o.id === trackingId.trim());
-      setTrackingResult(order || { notFound: true });
+      const docRef = doc(db, "orders", trackingId.trim());
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setTrackingResult({ id: docSnap.id, ...docSnap.data() });
+      } else {
+        setTrackingResult({ notFound: true });
+      }
     } catch (error) {
       console.error(error);
+      setTrackingResult({ notFound: true });
     } finally {
       setIsSearching(false);
     }

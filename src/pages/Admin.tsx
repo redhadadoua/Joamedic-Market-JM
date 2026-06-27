@@ -2,9 +2,9 @@ import { useState, useEffect, useMemo } from "react";
 import { User } from "firebase/auth";
 import { motion } from "framer-motion";
 import { LogOut, RefreshCcw, FileSpreadsheet, Package, CheckCircle2, Clock } from "lucide-react";
-import { initAuth, googleSignIn, logout, getAccessToken } from "../lib/firebase";
+import { initAuth, googleSignIn, logout, getAccessToken, db } from "../lib/firebase";
 import { createSpreadsheet, appendRowToSheet } from "../lib/sheets";
-import { socket } from "../lib/socket";
+import { collection, onSnapshot, doc, updateDoc, setDoc, getDoc } from "firebase/firestore";
 import { cn } from "../lib/utils";
 
 const COLORS = ["رمادي", "أسود", "أبيض", "أزرق سماوي", "أزرق ملكي", "أزرق داكن", "أحمر عنابي"];
@@ -28,25 +28,26 @@ export default function Admin() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/settings/spreadsheet").then(res => res.json()).then(data => {
-      setSpreadsheetId(data.spreadsheetId);
+    // Fetch spreadsheet ID from Firestore instead of Express API
+    getDoc(doc(db, "settings", "general")).then((docSnap) => {
+      if (docSnap.exists()) {
+        setSpreadsheetId(docSnap.data().spreadsheetId);
+      }
     });
 
-    fetch("/api/orders").then(res => res.json()).then(data => {
-      setOrders(data);
-    });
-
-    socket.on("order_added", (order) => {
-      setOrders(prev => [...prev, order]);
-    });
-    
-    socket.on("order_updated", (updatedOrder) => {
-      setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
+    // Listen to orders in real-time from Firestore
+    const unsubscribeOrders = onSnapshot(collection(db, "orders"), (snapshot) => {
+      const ordersList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      // Sort by creation time (assuming createdAt is ISO string)
+      ordersList.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      setOrders(ordersList);
     });
 
     return () => {
-      socket.off("order_added");
-      socket.off("order_updated");
+      unsubscribeOrders();
     };
   }, []);
 
@@ -70,11 +71,7 @@ export default function Admin() {
             order.status
           ]);
           
-          await fetch(`/api/orders/${order.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ syncedToSheets: true })
-          });
+          await updateDoc(doc(db, "orders", order.id), { syncedToSheets: true });
         } catch (e) {
           console.error("Failed to sync order", order.id, e);
         }
@@ -106,11 +103,7 @@ export default function Admin() {
     try {
       const id = await createSpreadsheet();
       setSpreadsheetId(id);
-      await fetch('/api/settings/spreadsheet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ spreadsheetId: id })
-      });
+      await setDoc(doc(db, "settings", "general"), { spreadsheetId: id }, { merge: true });
     } catch (error) {
       console.error(error);
       alert("فشل في إنشاء ملف Google Sheets.");
@@ -122,11 +115,7 @@ export default function Admin() {
   const toggleStatus = async (order: any) => {
     const newStatus = order.status === 'pending' ? 'fulfilled' : 'pending';
     try {
-      await fetch(`/api/orders/${order.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
-      });
+      await updateDoc(doc(db, "orders", order.id), { status: newStatus });
     } catch (e) {
       console.error(e);
     }
