@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "description": "",
+  "name": "Joy of apparel",
+  "description": "An apparel store app",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
