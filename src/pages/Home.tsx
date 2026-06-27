@@ -2,18 +2,26 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, ShieldCheck, Truck, Clock, ArrowLeft, Search, CheckCircle2, Package, MapPin, Calendar, Map } from "lucide-react";
 import { cn } from "../lib/utils";
-import productImage from "../assets/images/medical_scrubs_white_1782522892178.jpg";
 import { db } from "../lib/firebase";
 import { collection, addDoc, getDoc, doc, setDoc } from "firebase/firestore";
 
+// Import real scrub images
+import scrubWhite from "../assets/images/scrub_white_1782599260078.jpeg";
+import scrubCharcoal from "../assets/images/scrub_charcoal_1782599280126.jpeg";
+import scrubBlack from "../assets/images/scrub_black_1782599291799.jpeg";
+import scrubSky from "../assets/images/scrub_sky_1782599303467.jpeg";
+import scrubRoyal from "../assets/images/scrub_royal_1782599317090.jpeg";
+import scrubNavy from "../assets/images/scrub_navy_1782599328387.jpeg";
+import scrubBurgundy from "../assets/images/scrub_burgundy_1782599338839.jpeg";
+
 const COLORS = [
-  { id: "charcoal", name: "رمادي", hex: "#374151", filter: "saturate(0) brightness(0.5)" },
-  { id: "black", name: "أسود", hex: "#0f172a", filter: "saturate(0) brightness(0.2)" },
-  { id: "white", name: "أبيض", hex: "#f8fafc", filter: "saturate(0) brightness(1.2)" },
-  { id: "sky", name: "أزرق سماوي", hex: "#38bdf8", filter: "hue-rotate(180deg) saturate(1.5) brightness(1.1)" },
-  { id: "royal", name: "أزرق ملكي", hex: "#1d4ed8", filter: "hue-rotate(200deg) saturate(2) brightness(0.9)" },
-  { id: "navy", name: "أزرق داكن", hex: "#1e3a8a", filter: "hue-rotate(220deg) saturate(1.2) brightness(0.7)" },
-  { id: "burgundy", name: "أحمر عنابي", hex: "#831843", filter: "hue-rotate(320deg) saturate(1.5) brightness(0.8)" }
+  { id: "charcoal", name: "رمادي", hex: "#374151", image: scrubCharcoal },
+  { id: "black", name: "أسود", hex: "#0f172a", image: scrubBlack },
+  { id: "white", name: "أبيض", hex: "#f8fafc", image: scrubWhite },
+  { id: "sky", name: "أزرق سماوي", hex: "#38bdf8", image: scrubSky },
+  { id: "royal", name: "أزرق ملكي", hex: "#1d4ed8", image: scrubRoyal },
+  { id: "navy", name: "أزرق داكن", hex: "#1e3a8a", image: scrubNavy },
+  { id: "burgundy", name: "أحمر عنابي", hex: "#831843", image: scrubBurgundy }
 ];
 
 const SIZES = [
@@ -295,7 +303,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-slate-800/50 flex items-center justify-center">
+            <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-slate-800/30 flex items-center justify-center border border-slate-800">
               <AnimatePresence mode="wait">
                 <motion.img
                   key={selectedColor.id}
@@ -303,10 +311,10 @@ export default function Home() {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 1.05 }}
                   transition={{ duration: 0.3 }}
-                  src={productImage}
+                  src={selectedColor.image}
                   alt="JOAmedic Scrubs"
-                  className="w-full h-full object-cover mix-blend-screen"
-                  style={{ filter: selectedColor.filter }}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
                 />
               </AnimatePresence>
             </div>

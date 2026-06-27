@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { User } from "firebase/auth";
 import { motion } from "framer-motion";
 import { LogOut, RefreshCcw, FileSpreadsheet, Package, CheckCircle2, Clock, Phone, UserPlus, ShieldAlert } from "lucide-react";
