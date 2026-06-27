@@ -6,10 +6,11 @@ service cloud.firestore {
     }
     
     match /orders/{orderId} {
-      // Anyone can place an order
       allow create: if true;
-      // Only authenticated users (admins) can read and update
-      allow read, update, delete: if request.auth != null;
+      // Anyone can track their order if they have the ID
+      allow get: if true;
+      // Only authenticated users (admins) can list, update and delete
+      allow list, update, delete: if request.auth != null;
     }
     
     match /settings/{settingId} {
