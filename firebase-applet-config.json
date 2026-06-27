@@ -1,9 +1,10 @@
 {
-  "projectId": "pragmatic-backup-0r6mz",
-  "appId": "1:300758106030:web:43875ecbf4640f609f523f",
-  "apiKey": "AIzaSyCq_wWnlTcJz_NZoI1WvacUKd2bt8JmxYw",
-  "authDomain": "pragmatic-backup-0r6mz.firebaseapp.com",
-  "storageBucket": "pragmatic-backup-0r6mz.firebasestorage.app",
-  "messagingSenderId": "300758106030",
+  "projectId": "joamedic-d2461",
+  "appId": "1:991815005081:web:4aa510cb8cd4d0d61ed908",
+  "apiKey": "AIzaSyCpsTlblhBYIw26JqppY34ahDPOUdJVyM8",
+  "authDomain": "joamedic-d2461.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-d8d1d3db-3216-4b1b-87b3-092b84b55df8",
+  "storageBucket": "joamedic-d2461.firebasestorage.app",
+  "messagingSenderId": "991815005081",
   "measurementId": ""
 }
