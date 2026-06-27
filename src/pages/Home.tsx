@@ -51,7 +51,7 @@ export default function Home() {
     try {
       const fullAddress = deliveryMethod === "home" 
         ? `${selectedWilaya} - ${selectedCommune}\n${address}`
-        : `${selectedWilaya}\n${address}`;
+        : selectedWilaya;
 
       const res = await fetch("/api/orders", {
         method: "POST",
@@ -258,13 +258,13 @@ export default function Home() {
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium text-slate-200">اللون: <span className="text-teal-400">{selectedColor.name}</span></h3>
               </div>
-              <div className="flex flex-nowrap sm:flex-wrap overflow-x-auto gap-3 pb-2 scrollbar-hide">
+              <div className="flex flex-wrap gap-2 sm:gap-3 pb-2 justify-center sm:justify-start">
                 {COLORS.map((c) => (
                   <button
                     key={c.id}
                     onClick={() => setSelectedColor(c)}
                     className={cn(
-                      "flex-shrink-0 w-12 h-12 rounded-full transition-all duration-300 border-2 outline-none",
+                      "flex-shrink-0 w-9 h-9 sm:w-12 sm:h-12 rounded-full transition-all duration-300 border-2 outline-none",
                       selectedColor.id === c.id 
                         ? "border-teal-400 scale-110 shadow-[0_0_15px_rgba(45,212,191,0.4)]" 
                         : "border-transparent hover:scale-105"
@@ -434,18 +434,20 @@ export default function Home() {
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-400">
-                  {deliveryMethod === "home" ? "عنوان التوصيل التفصيلي (الحي، الشارع...)" : "المكتب الأقرب"}
-                </label>
-                <textarea 
-                  required 
-                  value={address} 
-                  onChange={e => setAddress(e.target.value)}
-                  className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all resize-none h-20"
-                  placeholder={deliveryMethod === "home" ? "أدخل تفاصيل العنوان هنا..." : "أدخل اسم مكتب التوصيل هنا..."}
-                />
-              </div>
+              {deliveryMethod === "home" && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-400">
+                    عنوان التوصيل التفصيلي (الحي، الشارع...)
+                  </label>
+                  <textarea 
+                    required 
+                    value={address} 
+                    onChange={e => setAddress(e.target.value)}
+                    className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all resize-none h-20"
+                    placeholder="أدخل تفاصيل العنوان هنا..."
+                  />
+                </div>
+              )}
 
               <button 
                 disabled={isSubmitting}
