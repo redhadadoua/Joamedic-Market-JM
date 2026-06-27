@@ -4,7 +4,7 @@ import { Check, ShieldCheck, Truck, Clock, ArrowLeft, Search, CheckCircle2, Pack
 import { cn } from "../lib/utils";
 import productImage from "../assets/images/medical_scrubs_white_1782522892178.jpg";
 import { db } from "../lib/firebase";
-import { collection, addDoc, getDoc, doc } from "firebase/firestore";
+import { collection, addDoc, getDoc, doc, setDoc } from "firebase/firestore";
 
 const COLORS = [
   { id: "charcoal", name: "رمادي", hex: "#374151", filter: "saturate(0) brightness(0.5)" },
@@ -25,6 +25,15 @@ const SIZES = [
 ];
 
 import { getWilayaList, getBaladyiatsForWilaya } from "@dzcode-io/leblad";
+
+const STATUS_LABELS: Record<string, { label: string, colorClass: string }> = {
+  pending: { label: 'قيد المعالجة', colorClass: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+  in_delivery: { label: 'قيد التوصيل', colorClass: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+  at_office: { label: 'في المكتب', colorClass: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
+  on_the_way: { label: 'في الطريق', colorClass: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' },
+  completed: { label: 'مكتمل', colorClass: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+  cancelled: { label: 'ملغى', colorClass: 'bg-red-500/10 text-red-400 border-red-500/20' }
+};
 
 export default function Home() {
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
@@ -55,6 +64,8 @@ export default function Home() {
         ? `${selectedWilaya} - ${selectedCommune}\n${address}`
         : selectedWilaya;
 
+      const customTrackingId = 'JM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+
       const orderData = {
         customerName: name,
         phone,
@@ -67,11 +78,12 @@ export default function Home() {
         createdAt: new Date().toISOString()
       };
 
-      const docRef = await addDoc(collection(db, "orders"), orderData);
-      setSuccessOrder({ id: docRef.id, ...orderData });
+      await setDoc(doc(db, "orders", customTrackingId), orderData);
+      setSuccessOrder({ id: customTrackingId, ...orderData });
       setIsSuccess(true);
     } catch (error) {
       console.error(error);
+      alert("حدث خطأ أثناء تأكيد الطلب. يرجى المحاولة مرة أخرى.");
     } finally {
       setIsSubmitting(false);
     }
@@ -147,7 +159,7 @@ export default function Home() {
                 <input 
                   type="text" 
                   dir="ltr"
-                  placeholder="رقم الطلب (مثال: ORD-0001)"
+                  placeholder="رقم الطلب (مثال: JM-ABCDEF)"
                   value={trackingId}
                   onChange={(e) => setTrackingId(e.target.value)}
                   className="flex-1 bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 text-left uppercase"
@@ -179,10 +191,10 @@ export default function Home() {
                       <div className="flex justify-between items-center pb-4 border-b border-slate-700/50">
                         <div className="text-slate-400 text-sm">حالة الطلب</div>
                         <div className={cn("flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold border", 
-                          trackingResult.status === 'fulfilled' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                          STATUS_LABELS[trackingResult.status]?.colorClass || STATUS_LABELS['pending'].colorClass
                         )}>
-                          {trackingResult.status === 'fulfilled' ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
-                          {trackingResult.status === 'fulfilled' ? 'تم التوصيل' : 'قيد المعالجة (جاري الشحن)'}
+                          {trackingResult.status === 'completed' ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                          {STATUS_LABELS[trackingResult.status]?.label || STATUS_LABELS['pending'].label}
                         </div>
                       </div>
                       <div className="flex justify-between items-center">

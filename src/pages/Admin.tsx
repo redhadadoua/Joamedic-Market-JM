@@ -10,6 +10,15 @@ import { cn } from "../lib/utils";
 const COLORS = ["رمادي", "أسود", "أبيض", "أزرق سماوي", "أزرق ملكي", "أزرق داكن", "أحمر عنابي"];
 const SIZES = ["S", "M", "L", "XL", "XXL"];
 
+const STATUSES = [
+  { id: 'pending', label: 'قيد المعالجة', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+  { id: 'in_delivery', label: 'قيد التوصيل', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+  { id: 'at_office', label: 'في المكتب', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+  { id: 'on_the_way', label: 'في الطريق', color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' },
+  { id: 'completed', label: 'مكتمل', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+  { id: 'cancelled', label: 'ملغى', color: 'text-red-400 bg-red-500/10 border-red-500/20' }
+];
+
 export default function Admin() {
   const [needsAuth, setNeedsAuth] = useState<boolean | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -112,10 +121,9 @@ export default function Admin() {
     }
   };
 
-  const toggleStatus = async (order: any) => {
-    const newStatus = order.status === 'pending' ? 'fulfilled' : 'pending';
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      await updateDoc(doc(db, "orders", order.id), { status: newStatus });
+      await updateDoc(doc(db, "orders", orderId), { status: newStatus });
     } catch (e) {
       console.error(e);
     }
@@ -247,18 +255,21 @@ export default function Admin() {
                         <div className="text-slate-400 truncate">{order.address}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <button 
-                          onClick={() => toggleStatus(order)}
+                        <select
+                          value={order.status || 'pending'}
+                          onChange={(e) => updateOrderStatus(order.id, e.target.value)}
                           className={cn(
-                            "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border",
-                            order.status === 'fulfilled' 
-                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20" 
-                              : "bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20"
+                            "px-3 py-1.5 rounded-full text-xs font-bold transition-all border outline-none appearance-none cursor-pointer",
+                            STATUSES.find(s => s.id === (order.status || 'pending'))?.color || STATUSES[0].color
                           )}
+                          style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
                         >
-                          {order.status === 'fulfilled' ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
-                          {order.status === 'fulfilled' ? 'تم التوصيل' : 'قيد المعالجة'}
-                        </button>
+                          {STATUSES.map(status => (
+                            <option key={status.id} value={status.id} className="bg-slate-900 text-slate-100">
+                              {status.label}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                     </tr>
                   ))}
