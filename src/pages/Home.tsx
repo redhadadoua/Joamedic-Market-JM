@@ -6,13 +6,13 @@ import { db } from "../lib/firebase";
 import { collection, addDoc, getDoc, doc, setDoc } from "firebase/firestore";
 
 // Import real scrub images
-import scrubWhite from "../assets/images/scrub_white_1782599260078.jpeg";
-import scrubCharcoal from "../assets/images/scrub_charcoal_1782599280126.jpeg";
-import scrubBlack from "../assets/images/scrub_black_1782599291799.jpeg";
-import scrubSky from "../assets/images/scrub_sky_1782599303467.jpeg";
-import scrubRoyal from "../assets/images/scrub_royal_1782599317090.jpeg";
-import scrubNavy from "../assets/images/scrub_navy_1782599328387.jpeg";
-import scrubBurgundy from "../assets/images/scrub_burgundy_1782599338839.jpeg";
+import scrubWhite from "../assets/images/scrub_white_1782599260078.jpg";
+import scrubCharcoal from "../assets/images/scrub_charcoal_1782599280126.jpg";
+import scrubBlack from "../assets/images/scrub_black_1782599291799.jpg";
+import scrubSky from "../assets/images/scrub_sky_1782599303467.jpg";
+import scrubRoyal from "../assets/images/scrub_royal_1782599317090.jpg";
+import scrubNavy from "../assets/images/scrub_navy_1782599328387.jpg";
+import scrubBurgundy from "../assets/images/scrub_burgundy_1782599338839.jpg";
 
 const COLORS = [
   { id: "charcoal", name: "رمادي", hex: "#374151", image: scrubCharcoal },
@@ -32,7 +32,7 @@ const SIZES = [
   { id: "XXL", available: false }
 ];
 
-import { getWilayaList, getBaladyiatsForWilaya } from "@dzcode-io/leblad";
+import { getWilayaList, getBaladyiatsForWilaya } from "../utils/wilayas69";
 
 const STATUS_LABELS: Record<string, { label: string, colorClass: string }> = {
   pending: { label: 'قيد المعالجة', colorClass: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
