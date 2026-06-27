@@ -1,20 +1,32 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'redhadadoua@gmail.com';
+    }
+    
+    function isModerator() {
+      return request.auth != null && exists(/databases/$(database)/documents/moderators/$(request.auth.token.email));
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
     
     match /orders/{orderId} {
       allow create: if true;
-      // Anyone can track their order if they have the ID
       allow get: if true;
-      // Only authenticated users (admins) can list, update and delete
-      allow list, update, delete: if request.auth != null;
+      allow list, update, delete: if isAdmin() || isModerator();
+    }
+    
+    match /moderators/{email} {
+      allow read: if isAdmin() || isModerator();
+      allow write: if isAdmin();
     }
     
     match /settings/{settingId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAdmin();
     }
   }
 }

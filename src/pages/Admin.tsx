@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { User } from "firebase/auth";
 import { motion } from "framer-motion";
-import { LogOut, RefreshCcw, FileSpreadsheet, Package, CheckCircle2, Clock } from "lucide-react";
+import { LogOut, RefreshCcw, FileSpreadsheet, Package, CheckCircle2, Clock, Phone, UserPlus, ShieldAlert } from "lucide-react";
 import { initAuth, googleSignIn, logout, getAccessToken, db } from "../lib/firebase";
 import { createSpreadsheet, appendRowToSheet } from "../lib/sheets";
 import { collection, onSnapshot, doc, updateDoc, setDoc, getDoc } from "firebase/firestore";
@@ -27,16 +27,34 @@ export default function Admin() {
   const [orders, setOrders] = useState<any[]>([]);
   const [spreadsheetId, setSpreadsheetId] = useState<string | null>(null);
   const [isCreatingSheet, setIsCreatingSheet] = useState(false);
+  const [moderators, setModerators] = useState<string[]>([]);
+  const [newModerator, setNewModerator] = useState("");
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+  
+  const isAdmin = user?.email === 'redhadadoua@gmail.com';
 
   useEffect(() => {
     const unsubscribe = initAuth(
       (u) => { setUser(u); setNeedsAuth(false); },
-      () => { setUser(null); setNeedsAuth(true); }
+      () => { setUser(null); setNeedsAuth(true); setIsAuthorized(null); }
     );
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
+    if (!user) return;
+    
+    // Check if user is authorized (admin or moderator)
+    if (isAdmin) {
+      setIsAuthorized(true);
+    } else {
+      getDoc(doc(db, "moderators", user.email?.toLowerCase() || '')).then((docSnap) => {
+        setIsAuthorized(docSnap.exists());
+      }).catch(() => {
+        setIsAuthorized(false);
+      });
+    }
+
     // Fetch spreadsheet ID from Firestore instead of Express API
     getDoc(doc(db, "settings", "general")).then((docSnap) => {
       if (docSnap.exists()) {
@@ -44,6 +62,16 @@ export default function Admin() {
       }
     });
 
+    if (isAdmin) {
+      const unsubscribeMods = onSnapshot(collection(db, "moderators"), (snapshot) => {
+        setModerators(snapshot.docs.map(doc => doc.id));
+      });
+      return () => unsubscribeMods();
+    }
+  }, [user, isAdmin]);
+
+  useEffect(() => {
+    if (!user || !isAuthorized) return;
     // Listen to orders in real-time from Firestore
     const unsubscribeOrders = onSnapshot(collection(db, "orders"), (snapshot) => {
       const ordersList = snapshot.docs.map(doc => ({
@@ -129,6 +157,36 @@ export default function Admin() {
     }
   };
 
+  const updateOrderLocation = async (orderId: string, location: string) => {
+    try {
+      await updateDoc(doc(db, "orders", orderId), { trackingLocation: location });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleAddModerator = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newModerator.trim() || !isAdmin) return;
+    try {
+      await setDoc(doc(db, "moderators", newModerator.trim().toLowerCase()), { addedAt: new Date().toISOString() });
+      setNewModerator("");
+    } catch (e) {
+      console.error("Failed to add moderator", e);
+    }
+  };
+
+  const handleRemoveModerator = async (email: string) => {
+    if (!isAdmin) return;
+    try {
+      // Need to use deleteDoc, let's import it first
+      const { deleteDoc } = await import("firebase/firestore");
+      await deleteDoc(doc(db, "moderators", email));
+    } catch (e) {
+      console.error("Failed to remove moderator", e);
+    }
+  };
+
   const variantStock = useMemo(() => {
     const stock: Record<string, number> = {};
     COLORS.forEach(c => SIZES.forEach(s => stock[`${c}-${s}`] = 0));
@@ -183,6 +241,21 @@ export default function Admin() {
     );
   }
 
+  if (isAuthorized === false) {
+    return (
+      <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4">
+        <div className="bg-slate-900/80 border border-red-500/20 p-8 rounded-3xl max-w-sm w-full text-center">
+          <ShieldAlert className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-slate-100 mb-2">غير مصرح لك بالدخول</h2>
+          <p className="text-slate-400 text-sm mb-6">هذا الحساب ({user?.email}) ليس لديه صلاحيات المسؤول أو المشرف.</p>
+          <button onClick={logout} className="bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 px-4 rounded-xl transition-colors">
+            تسجيل الخروج
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#020617] text-slate-200 p-4 sm:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -194,20 +267,22 @@ export default function Admin() {
             <p className="text-slate-400 text-sm mt-1">{user?.email}</p>
           </div>
           <div className="flex items-center gap-3">
-            {!spreadsheetId ? (
-              <button 
-                onClick={handleSetupSheets}
-                disabled={isCreatingSheet}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2"
-              >
-                {isCreatingSheet ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
-                تفعيل Google Sheets
-              </button>
-            ) : (
-              <a href={`https://docs.google.com/spreadsheets/d/${spreadsheetId}`} target="_blank" rel="noreferrer" className="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
-                <FileSpreadsheet className="w-4 h-4" />
-                فتح جدول البيانات
-              </a>
+            {isAdmin && (
+              !spreadsheetId ? (
+                <button 
+                  onClick={handleSetupSheets}
+                  disabled={isCreatingSheet}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2"
+                >
+                  {isCreatingSheet ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+                  تفعيل Google Sheets
+                </button>
+              ) : (
+                <a href={`https://docs.google.com/spreadsheets/d/${spreadsheetId}`} target="_blank" rel="noreferrer" className="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+                  <FileSpreadsheet className="w-4 h-4" />
+                  فتح جدول البيانات
+                </a>
+              )
             )}
             <button onClick={logout} className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition">
               <LogOut className="w-5 h-5" />
@@ -231,7 +306,7 @@ export default function Admin() {
                     <th className="px-6 py-4 font-medium">العميل</th>
                     <th className="px-6 py-4 font-medium">المنتج (اللون والمقاس)</th>
                     <th className="px-6 py-4 font-medium">التوصيل</th>
-                    <th className="px-6 py-4 font-medium">الحالة</th>
+                    <th className="px-6 py-4 font-medium">الحالة ومكان الطرد</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50">
@@ -240,7 +315,10 @@ export default function Admin() {
                       <td className="px-6 py-4 whitespace-nowrap font-mono text-slate-400">{order.id}</td>
                       <td className="px-6 py-4">
                         <div className="font-medium text-slate-200">{order.customerName}</div>
-                        <div className="text-slate-500 font-mono text-xs mt-1" dir="ltr">{order.phone}</div>
+                        <a href={`tel:${order.phone}`} className="text-teal-400 hover:text-teal-300 font-mono text-xs mt-1 flex items-center gap-1 transition-colors" dir="ltr">
+                          <Phone className="w-3 h-3" />
+                          {order.phone}
+                        </a>
                       </td>
                       <td className="px-6 py-4">
                         <div className="inline-flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
@@ -255,21 +333,30 @@ export default function Admin() {
                         <div className="text-slate-400 truncate">{order.address}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <select
-                          value={order.status || 'pending'}
-                          onChange={(e) => updateOrderStatus(order.id, e.target.value)}
-                          className={cn(
-                            "px-3 py-1.5 rounded-full text-xs font-bold transition-all border outline-none appearance-none cursor-pointer",
-                            STATUSES.find(s => s.id === (order.status || 'pending'))?.color || STATUSES[0].color
-                          )}
-                          style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
-                        >
-                          {STATUSES.map(status => (
-                            <option key={status.id} value={status.id} className="bg-slate-900 text-slate-100">
-                              {status.label}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="flex flex-col gap-2">
+                          <select
+                            value={order.status || 'pending'}
+                            onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                            className={cn(
+                              "px-3 py-1.5 rounded-full text-xs font-bold transition-all border outline-none appearance-none cursor-pointer text-center",
+                              STATUSES.find(s => s.id === (order.status || 'pending'))?.color || STATUSES[0].color
+                            )}
+                            style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
+                          >
+                            {STATUSES.map(status => (
+                              <option key={status.id} value={status.id} className="bg-slate-900 text-slate-100">
+                                {status.label}
+                              </option>
+                            ))}
+                          </select>
+                          <input 
+                            type="text" 
+                            defaultValue={order.trackingLocation || ''}
+                            onBlur={(e) => updateOrderLocation(order.id, e.target.value)}
+                            placeholder="موقع الطرد (مثلاً: مستودع الجزائر)"
+                            className="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-teal-500 transition-colors"
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -321,6 +408,57 @@ export default function Admin() {
               </div>
             </div>
           </div>
+
+          {/* Moderator Management (Admins Only) */}
+          {isAdmin && (
+            <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800 rounded-2xl overflow-hidden mt-8">
+              <div className="p-6 border-b border-slate-800">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 text-purple-400" />
+                  إدارة المشرفين
+                </h2>
+                <p className="text-slate-400 text-xs mt-1">المشرفون يمكنهم معالجة الطلبات</p>
+              </div>
+              <div className="p-4 space-y-4">
+                <form onSubmit={handleAddModerator} className="flex gap-2">
+                  <input
+                    type="email"
+                    value={newModerator}
+                    onChange={(e) => setNewModerator(e.target.value)}
+                    placeholder="بريد المشرف (Gmail)"
+                    className="flex-1 bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    className="bg-purple-600 hover:bg-purple-500 text-white p-2 rounded-lg transition flex items-center justify-center shrink-0"
+                    title="إضافة مشرف"
+                  >
+                    <UserPlus className="w-5 h-5" />
+                  </button>
+                </form>
+
+                <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                  {moderators.length === 0 ? (
+                    <div className="text-center text-xs text-slate-500 py-4">لا يوجد مشرفون مضافون</div>
+                  ) : (
+                    moderators.map(email => (
+                      <div key={email} className="flex items-center justify-between bg-slate-800/30 border border-slate-800 rounded-lg p-3">
+                        <span className="text-sm font-mono text-slate-300 truncate">{email}</span>
+                        <button
+                          onClick={() => handleRemoveModerator(email)}
+                          className="text-slate-500 hover:text-red-400 p-1 transition-colors"
+                          title="إزالة المشرف"
+                        >
+                          <LogOut className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
       </div>

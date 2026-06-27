@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, ShieldCheck, Truck, Clock, ArrowLeft, Search, CheckCircle2, Package } from "lucide-react";
+import { Check, ShieldCheck, Truck, Clock, ArrowLeft, Search, CheckCircle2, Package, MapPin, Calendar, Map } from "lucide-react";
 import { cn } from "../lib/utils";
 import productImage from "../assets/images/medical_scrubs_white_1782522892178.jpg";
 import { db } from "../lib/firebase";
@@ -181,25 +181,78 @@ export default function Home() {
                     </div>
                   ) : (
                     <motion.div 
-                      initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                      className="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 space-y-4"
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+                      className="bg-slate-800/80 border border-slate-700/50 backdrop-blur-xl rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl relative overflow-hidden"
                     >
-                      <div className="flex justify-between items-center pb-4 border-b border-slate-700/50">
-                        <div className="text-slate-400 text-sm">رقم الطلب</div>
-                        <div className="font-mono font-bold text-teal-400">{trackingResult.id}</div>
-                      </div>
-                      <div className="flex justify-between items-center pb-4 border-b border-slate-700/50">
-                        <div className="text-slate-400 text-sm">حالة الطلب</div>
-                        <div className={cn("flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold border", 
+                      {/* Decorative background element */}
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-700/50 relative z-10">
+                        <div>
+                          <div className="text-slate-400 text-sm mb-1 flex items-center gap-2">
+                            <Package className="w-4 h-4" /> رقم الطلب
+                          </div>
+                          <div className="font-mono font-bold text-teal-400 text-xl">{trackingResult.id}</div>
+                        </div>
+                        <div className={cn("inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-bold border backdrop-blur-md self-start md:self-auto", 
                           STATUS_LABELS[trackingResult.status]?.colorClass || STATUS_LABELS['pending'].colorClass
                         )}>
-                          {trackingResult.status === 'completed' ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                          {trackingResult.status === 'completed' ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
                           {STATUS_LABELS[trackingResult.status]?.label || STATUS_LABELS['pending'].label}
                         </div>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <div className="text-slate-400 text-sm">المنتج</div>
-                        <div className="font-medium text-slate-200">JOAmedic - {trackingResult.color} ({trackingResult.size})</div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+                        <div className="space-y-4">
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-full bg-slate-900/80 border border-slate-700 flex items-center justify-center shrink-0">
+                              <Calendar className="w-4 h-4 text-slate-400" />
+                            </div>
+                            <div>
+                              <div className="text-slate-500 text-xs mb-0.5">تاريخ الطلب</div>
+                              <div className="text-slate-200 text-sm font-medium" dir="ltr">
+                                {new Date(trackingResult.createdAt).toLocaleDateString('ar-DZ', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-full bg-slate-900/80 border border-slate-700 flex items-center justify-center shrink-0">
+                              <Map className="w-4 h-4 text-slate-400" />
+                            </div>
+                            <div>
+                              <div className="text-slate-500 text-xs mb-0.5">المنتج المطلوب</div>
+                              <div className="text-slate-200 text-sm font-medium">JOAmedic - {trackingResult.color} (المقاس {trackingResult.size})</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-full bg-slate-900/80 border border-slate-700 flex items-center justify-center shrink-0">
+                              <Truck className="w-4 h-4 text-slate-400" />
+                            </div>
+                            <div>
+                              <div className="text-slate-500 text-xs mb-0.5">وجهة التوصيل</div>
+                              <div className="text-slate-200 text-sm font-medium">{trackingResult.wilaya} {trackingResult.commune ? `- ${trackingResult.commune}` : ''}</div>
+                              <div className="text-slate-400 text-xs mt-0.5">{trackingResult.deliveryMethod === 'home' ? 'توصيل إلى باب المنزل' : 'توصيل إلى مكتب شركة الشحن'}</div>
+                            </div>
+                          </div>
+
+                          {trackingResult.trackingLocation && (
+                            <div className="flex items-start gap-3">
+                              <div className="w-8 h-8 rounded-full bg-teal-500/10 border border-teal-500/30 flex items-center justify-center shrink-0">
+                                <MapPin className="w-4 h-4 text-teal-400 animate-pulse" />
+                              </div>
+                              <div>
+                                <div className="text-teal-500/80 text-xs mb-0.5 font-medium">الموقع الحالي للطرد</div>
+                                <div className="text-teal-300 text-sm font-bold bg-teal-500/5 px-2 py-1 rounded-lg border border-teal-500/10 inline-block">
+                                  {trackingResult.trackingLocation}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </motion.div>
                   )}
