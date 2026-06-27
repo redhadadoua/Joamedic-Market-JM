@@ -89,7 +89,11 @@ export default function Admin() {
   const handleLogin = async () => {
     setIsLoggingIn(true);
     try {
-      await googleSignIn();
+      const res = await googleSignIn();
+      if (res?.user) {
+        setUser(res.user);
+        setNeedsAuth(false);
+      }
     } catch (err) {
       console.error('Login failed:', err);
     } finally {
