@@ -30,6 +30,9 @@ export default function Admin() {
   const [moderators, setModerators] = useState<string[]>([]);
   const [newModerator, setNewModerator] = useState("");
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+  const [inventory, setInventory] = useState<Record<string, number>>({});
+  const [isEditingInventory, setIsEditingInventory] = useState(false);
+  const [editedInventory, setEditedInventory] = useState<Record<string, number>>({});
   
   const isAdmin = user?.email === 'redhadadoua@gmail.com';
 
@@ -62,12 +65,28 @@ export default function Admin() {
       }
     });
 
+    // Fetch inventory
+    const unsubscribeInventory = onSnapshot(doc(db, "settings", "inventory"), (docSnap) => {
+      if (docSnap.exists()) {
+        setInventory(docSnap.data());
+      } else {
+        setInventory({});
+      }
+    });
+
     if (isAdmin) {
       const unsubscribeMods = onSnapshot(collection(db, "moderators"), (snapshot) => {
         setModerators(snapshot.docs.map(doc => doc.id));
       });
-      return () => unsubscribeMods();
+      return () => {
+        unsubscribeMods();
+        unsubscribeInventory();
+      };
     }
+
+    return () => {
+      unsubscribeInventory();
+    };
   }, [user, isAdmin]);
 
   useEffect(() => {
@@ -79,14 +98,14 @@ export default function Admin() {
         ...doc.data()
       }));
       // Sort by creation time (assuming createdAt is ISO string)
-      ordersList.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      ordersList.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setOrders(ordersList);
     });
 
     return () => {
       unsubscribeOrders();
     };
-  }, []);
+  }, [user, isAuthorized]);
 
   // Sync to sheets side effect
   useEffect(() => {
@@ -187,10 +206,25 @@ export default function Admin() {
     }
   };
 
-  const variantStock = useMemo(() => {
+  const handleSaveInventory = async () => {
+    try {
+      await setDoc(doc(db, "settings", "inventory"), editedInventory);
+      setIsEditingInventory(false);
+    } catch (e) {
+      console.error("Failed to save inventory", e);
+    }
+  };
+
+  const handleEditInventoryStart = () => {
+    setEditedInventory({ ...inventory });
+    setIsEditingInventory(true);
+  };
+
+  const soldItems = useMemo(() => {
     const stock: Record<string, number> = {};
     COLORS.forEach(c => SIZES.forEach(s => stock[`${c}-${s}`] = 0));
     orders.forEach(o => {
+      if (o.status === 'cancelled') return;
       const key = `${o.color}-${o.size}`;
       if (stock[key] !== undefined) {
         stock[key]++;
@@ -371,10 +405,37 @@ export default function Admin() {
           </div>
 
           {/* Variant Stock Monitor */}
-          <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800 rounded-2xl overflow-hidden">
-            <div className="p-6 border-b border-slate-800">
-              <h2 className="text-xl font-bold">مراقبة المخزون والمبيعات</h2>
-              <p className="text-slate-400 text-xs mt-1">الطلبات المسجلة حسب اللون والمقاس</p>
+          <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800 rounded-2xl overflow-hidden mt-8">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-bold">مراقبة المخزون والمبيعات</h2>
+                <p className="text-slate-400 text-xs mt-1">الكمية المباعة / المخزون الكلي</p>
+              </div>
+              {isAdmin && (
+                isEditingInventory ? (
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => setIsEditingInventory(false)}
+                      className="px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition"
+                    >
+                      إلغاء
+                    </button>
+                    <button 
+                      onClick={handleSaveInventory}
+                      className="px-3 py-1.5 text-sm bg-teal-600 hover:bg-teal-500 text-white rounded-lg transition"
+                    >
+                      حفظ
+                    </button>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={handleEditInventoryStart}
+                    className="px-3 py-1.5 text-sm bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition"
+                  >
+                    تعديل المخزون الكلي
+                  </button>
+                )
+              )}
             </div>
             <div className="p-4 overflow-x-auto">
               <div className="grid grid-cols-[minmax(80px,auto)_repeat(5,1fr)] gap-2 text-center text-sm mb-2 font-medium text-slate-400">
@@ -390,16 +451,38 @@ export default function Admin() {
                   <div key={color} className="grid grid-cols-[minmax(80px,auto)_repeat(5,1fr)] gap-2 items-center">
                     <div className="text-right text-sm text-slate-300 w-24 truncate" title={color}>{color}</div>
                     {SIZES.map(size => {
-                      const count = variantStock[`${color}-${size}`];
+                      const key = `${color}-${size}`;
+                      const sold = soldItems[key] || 0;
+                      const total = isEditingInventory ? (editedInventory[key] || 0) : (inventory[key] || 0);
+                      const available = Math.max(0, total - sold);
+                      
                       return (
                         <div 
                           key={size} 
                           className={cn(
-                            "py-2 rounded-lg border text-center font-mono text-sm transition-colors",
-                            count > 0 ? "bg-teal-500/20 border-teal-500/30 text-teal-300 font-bold" : "bg-slate-800/30 border-slate-800 text-slate-600"
+                            "rounded-lg border text-center font-mono text-xs sm:text-sm transition-colors overflow-hidden",
+                            isEditingInventory 
+                              ? "bg-slate-800 border-slate-700" 
+                              : (available > 0 ? "bg-teal-500/10 border-teal-500/20 text-teal-400" : (total > 0 ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-slate-800/30 border-slate-800 text-slate-600"))
                           )}
                         >
-                          {count}
+                          {isEditingInventory ? (
+                            <input
+                              type="number"
+                              min="0"
+                              value={editedInventory[key] || ''}
+                              onChange={(e) => setEditedInventory({ ...editedInventory, [key]: parseInt(e.target.value) || 0 })}
+                              placeholder="0"
+                              className="w-full bg-transparent text-center py-2 focus:outline-none focus:bg-slate-700 text-slate-200"
+                              dir="ltr"
+                            />
+                          ) : (
+                            <div className="py-2 px-1 flex flex-col sm:flex-row justify-center items-center gap-1 sm:gap-2">
+                              <span className="font-bold" title="الكمية المباعة">{sold}</span>
+                              <span className="text-slate-500 hidden sm:inline">/</span>
+                              <span className="text-slate-400" title="المخزون الكلي">{total}</span>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
