@@ -3,11 +3,11 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     function isAdmin() {
-      return request.auth != null && request.auth.token.email == 'redhadadoua@gmail.com';
+      return request.auth != null && request.auth.token.email.lower() == 'redhadadoua@gmail.com';
     }
     
     function isModerator() {
-      return request.auth != null && exists(/databases/$(database)/documents/moderators/$(request.auth.token.email));
+      return request.auth != null && exists(/databases/$(database)/documents/moderators/$(request.auth.token.email.lower()));
     }
 
     match /{document=**} {

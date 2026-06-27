@@ -62,7 +62,7 @@ export default function Home() {
     try {
       const fullAddress = deliveryMethod === "home" 
         ? `${selectedWilaya} - ${selectedCommune}\n${address}`
-        : selectedWilaya;
+        : `${selectedWilaya} - ${selectedCommune} (استلام من المكتب)`;
 
       const customTrackingId = 'JM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
 
@@ -73,6 +73,7 @@ export default function Home() {
         deliveryMethod,
         color: selectedColor.name,
         size: selectedSize,
+        price: 3700,
         cod: true,
         status: "pending",
         createdAt: new Date().toISOString()
@@ -284,6 +285,10 @@ export default function Home() {
                   JOAmedic
                 </h1>
                 <p className="text-slate-400 text-lg">الزي الطبي الأكثر راحة وأناقة</p>
+                <div className="flex items-baseline gap-2 mt-3">
+                  <span className="text-2xl sm:text-3xl font-extrabold text-teal-400">3700 دج</span>
+                  <span className="text-xs sm:text-sm text-slate-500 line-through">5200 دج</span>
+                </div>
               </div>
               <div className="bg-teal-500/20 text-teal-300 px-4 py-1.5 rounded-full text-sm font-medium border border-teal-500/30">
                 حصري
@@ -401,9 +406,15 @@ export default function Home() {
               ) : null}
             </AnimatePresence>
 
-            <div className="flex items-center gap-3 mb-6">
-              <Truck className="w-6 h-6 text-teal-400" />
-              <h2 className="text-2xl font-bold">الدفع عند الاستلام</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <Truck className="w-6 h-6 text-teal-400" />
+                <h2 className="text-2xl font-bold">الدفع عند الاستلام</h2>
+              </div>
+              <div className="bg-teal-500/10 border border-teal-500/30 rounded-xl px-4 py-2 flex items-center gap-2 self-start sm:self-auto">
+                <span className="text-sm text-slate-400">السعر:</span>
+                <span className="text-xl font-black text-teal-400">3700 دج</span>
+              </div>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -483,7 +494,7 @@ export default function Home() {
                 </select>
               </div>
 
-              {deliveryMethod === "home" && selectedWilaya && (
+              {selectedWilaya && (
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-slate-400">البلدية</label>
                   <select

@@ -34,7 +34,7 @@ export default function Admin() {
   const [isEditingInventory, setIsEditingInventory] = useState(false);
   const [editedInventory, setEditedInventory] = useState<Record<string, number>>({});
   
-  const isAdmin = user?.email === 'redhadadoua@gmail.com';
+  const isAdmin = user?.email?.toLowerCase() === 'redhadadoua@gmail.com';
 
   useEffect(() => {
     const unsubscribe = initAuth(
@@ -233,7 +233,7 @@ export default function Admin() {
     return stock;
   }, [orders]);
 
-  if (needsAuth === null) {
+  if (needsAuth === null || (user && isAuthorized === null)) {
     return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full" /></div>;
   }
 
@@ -324,6 +324,59 @@ export default function Admin() {
           </div>
         </div>
 
+        {/* Metrics Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800 p-5 rounded-2xl flex flex-col justify-between">
+            <span className="text-slate-400 text-xs sm:text-sm">إجمالي المبيعات (مكتمل)</span>
+            <div className="mt-2 flex items-baseline gap-1">
+              <span className="text-xl sm:text-2xl font-black text-emerald-400">
+                {orders.filter(o => o.status === 'completed').length * 3700}
+              </span>
+              <span className="text-xs text-slate-500">دج</span>
+            </div>
+          </div>
+          
+          <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800 p-5 rounded-2xl flex flex-col justify-between">
+            <span className="text-slate-400 text-xs sm:text-sm">المبيعات المتوقعة</span>
+            <div className="mt-2 flex items-baseline gap-1">
+              <span className="text-xl sm:text-2xl font-black text-blue-400">
+                {orders.filter(o => ['in_delivery', 'at_office', 'on_the_way', 'pending'].includes(o.status)).length * 3700}
+              </span>
+              <span className="text-xs text-slate-500">دج</span>
+            </div>
+          </div>
+
+          <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800 p-5 rounded-2xl flex flex-col justify-between">
+            <span className="text-slate-400 text-xs sm:text-sm">الطلبات النشطة / الكلية</span>
+            <div className="mt-2 flex items-baseline gap-1">
+              <span className="text-xl sm:text-2xl font-black text-teal-400">
+                {orders.filter(o => o.status !== 'cancelled' && o.status !== 'completed').length}
+              </span>
+              <span className="text-xs text-slate-500">نشط /</span>
+              <span className="text-sm font-bold text-slate-400">{orders.filter(o => o.status !== 'cancelled').length} كلي</span>
+            </div>
+          </div>
+
+          <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800 p-5 rounded-2xl flex flex-col justify-between">
+            <span className="text-slate-400 text-xs sm:text-sm">المخزون الكلي المتوفر</span>
+            <div className="mt-2 flex items-baseline gap-1">
+              <span className="text-xl sm:text-2xl font-black text-purple-400">
+                {(() => {
+                  let totalStock = 0;
+                  let totalSold = 0;
+                  COLORS.forEach(c => SIZES.forEach(s => {
+                    const key = `${c}-${s}`;
+                    totalStock += inventory[key] || 0;
+                    totalSold += soldItems[key] || 0;
+                  }));
+                  return Math.max(0, totalStock - totalSold);
+                })()}
+              </span>
+              <span className="text-xs text-slate-500">قطعة متوفرة</span>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           
           {/* Orders Table */}
@@ -344,7 +397,7 @@ export default function Admin() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50">
-                  {orders.slice().reverse().map(order => (
+                  {orders.map(order => (
                     <tr key={order.id} className="hover:bg-slate-800/20 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap font-mono text-slate-400">{order.id}</td>
                       <td className="px-6 py-4">
@@ -360,6 +413,9 @@ export default function Admin() {
                           <span className="font-medium">{order.color}</span>
                           <span className="text-slate-500 mx-1">|</span>
                           <span className="font-bold font-mono">{order.size}</span>
+                        </div>
+                        <div className="text-xs text-teal-400 font-bold mt-1.5 font-mono text-right">
+                          {order.price || 3700} دج
                         </div>
                       </td>
                       <td className="px-6 py-4 max-w-[200px] truncate" title={order.address}>
