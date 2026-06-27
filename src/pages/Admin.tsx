@@ -7,7 +7,7 @@ import { createSpreadsheet, appendRowToSheet } from "../lib/sheets";
 import { socket } from "../lib/socket";
 import { cn } from "../lib/utils";
 
-const COLORS = ["أزرق مخضر (Teal)", "كحلي", "نعناعي", "عنابي", "أزرق ملكي", "رمادي داكن", "أبيض طبي"];
+const COLORS = ["رمادي", "أسود", "أبيض", "أزرق سماوي", "أزرق ملكي", "أزرق داكن", "أحمر عنابي"];
 const SIZES = ["S", "M", "L", "XL", "XXL"];
 
 export default function Admin() {
@@ -64,7 +64,7 @@ export default function Admin() {
             order.customerName,
             order.phone,
             order.address,
-            order.deliveryMethod === 'home' ? 'توصيل منزلي' : 'مكتب (Stop Desk)',
+            order.deliveryMethod === 'home' ? 'توصيل منزلي' : 'مكتب',
             order.color,
             order.size,
             order.status
@@ -254,7 +254,7 @@ export default function Admin() {
                         </div>
                       </td>
                       <td className="px-6 py-4 max-w-[200px] truncate" title={order.address}>
-                        <div className="text-xs text-teal-400 mb-1">{order.deliveryMethod === 'home' ? 'توصيل منزلي' : 'Stop Desk'}</div>
+                        <div className="text-xs text-teal-400 mb-1">{order.deliveryMethod === 'home' ? 'توصيل منزلي' : 'مكتب'}</div>
                         <div className="text-slate-400 truncate">{order.address}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

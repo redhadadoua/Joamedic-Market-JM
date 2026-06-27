@@ -5,13 +5,13 @@ import { cn } from "../lib/utils";
 import productImage from "../assets/images/medical_scrubs_white_1782522892178.jpg";
 
 const COLORS = [
-  { id: "teal", name: "أزرق مخضر (Teal)", hex: "#0d9488", filter: "hue-rotate(160deg) saturate(1.5)" },
-  { id: "navy", name: "كحلي", hex: "#1e3a8a", filter: "hue-rotate(220deg) saturate(1.2) brightness(0.7)" },
-  { id: "mint", name: "نعناعي", hex: "#a7f3d0", filter: "hue-rotate(140deg) brightness(1.2)" },
-  { id: "burgundy", name: "عنابي", hex: "#831843", filter: "hue-rotate(320deg) saturate(1.5) brightness(0.8)" },
+  { id: "charcoal", name: "رمادي", hex: "#374151", filter: "saturate(0) brightness(0.5)" },
+  { id: "black", name: "أسود", hex: "#0f172a", filter: "saturate(0) brightness(0.2)" },
+  { id: "white", name: "أبيض", hex: "#f8fafc", filter: "saturate(0) brightness(1.2)" },
+  { id: "sky", name: "أزرق سماوي", hex: "#38bdf8", filter: "hue-rotate(180deg) saturate(1.5) brightness(1.1)" },
   { id: "royal", name: "أزرق ملكي", hex: "#1d4ed8", filter: "hue-rotate(200deg) saturate(2) brightness(0.9)" },
-  { id: "charcoal", name: "رمادي داكن", hex: "#374151", filter: "saturate(0) brightness(0.5)" },
-  { id: "white", name: "أبيض طبي", hex: "#f8fafc", filter: "saturate(0) brightness(1.2)" },
+  { id: "navy", name: "أزرق داكن", hex: "#1e3a8a", filter: "hue-rotate(220deg) saturate(1.2) brightness(0.7)" },
+  { id: "burgundy", name: "أحمر عنابي", hex: "#831843", filter: "hue-rotate(320deg) saturate(1.5) brightness(0.8)" }
 ];
 
 const SIZES = [
@@ -258,13 +258,13 @@ export default function Home() {
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium text-slate-200">اللون: <span className="text-teal-400">{selectedColor.name}</span></h3>
               </div>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-nowrap sm:flex-wrap overflow-x-auto gap-3 pb-2 scrollbar-hide">
                 {COLORS.map((c) => (
                   <button
                     key={c.id}
                     onClick={() => setSelectedColor(c)}
                     className={cn(
-                      "w-12 h-12 rounded-full transition-all duration-300 border-2 outline-none",
+                      "flex-shrink-0 w-12 h-12 rounded-full transition-all duration-300 border-2 outline-none",
                       selectedColor.id === c.id 
                         ? "border-teal-400 scale-110 shadow-[0_0_15px_rgba(45,212,191,0.4)]" 
                         : "border-transparent hover:scale-105"
@@ -348,7 +348,7 @@ export default function Home() {
                     value={name} 
                     onChange={e => setName(e.target.value)}
                     className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all"
-                    placeholder="محمد أحمد"
+                    placeholder="الإسم واللقب"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -390,7 +390,7 @@ export default function Home() {
                         : "bg-slate-800/50 text-slate-400 border-slate-700 hover:bg-slate-800"
                     )}
                   >
-                    استلام من المكتب (Stop Desk)
+                    استلام من المكتب
                   </button>
                 </div>
               </div>
@@ -436,7 +436,7 @@ export default function Home() {
 
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-slate-400">
-                  {deliveryMethod === "home" ? "عنوان التوصيل التفصيلي (الحي، الشارع...)" : "المكتب الأقرب (Stop Desk)"}
+                  {deliveryMethod === "home" ? "عنوان التوصيل التفصيلي (الحي، الشارع...)" : "المكتب الأقرب"}
                 </label>
                 <textarea 
                   required 
