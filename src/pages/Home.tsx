@@ -46,7 +46,7 @@ const STATUS_LABELS: Record<string, { label: string, colorClass: string }> = {
 };
 
 export default function Home() {
-  usePageMetadata("Joamedic - أحذية طبية مريحة", "أحذية Joamedic الطبية، راحة يومية وأناقة في كل خطوة.");
+  usePageMetadata("Joamedic - أزياء طبية مريحة", "أزياء Joamedic الطبية، راحة يومية وأناقة في كل خطوة.");
 
   const [orderItems, setOrderItems] = useState<Array<{ id: string, color: typeof COLORS[0], size: string, quantity: number }>>([
     { id: "initial-item", color: COLORS[0], size: "M", quantity: 1 }
