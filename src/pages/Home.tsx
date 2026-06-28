@@ -107,16 +107,6 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [successOrder, setSuccessOrder] = useState<any>(null);
-  const [whatsappNumber, setWhatsappNumber] = useState("213000000000");
-
-  // Fetch whatsapp number
-  React.useEffect(() => {
-    getDoc(doc(db, "settings", "general")).then((docSnap) => {
-      if (docSnap.exists() && docSnap.data().whatsappNumber) {
-        setWhatsappNumber(docSnap.data().whatsappNumber);
-      }
-    });
-  }, []);
 
   // Tracking State
   const [isTrackingMode, setIsTrackingMode] = useState(false);
