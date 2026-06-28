@@ -251,9 +251,18 @@ export default function Admin() {
     COLORS.forEach(c => SIZES.forEach(s => stock[`${c}-${s}`] = 0));
     orders.forEach(o => {
       if (o.status === 'cancelled') return;
-      const key = `${o.color}-${o.size}`;
-      if (stock[key] !== undefined) {
-        stock[key]++;
+      if (o.items && Array.isArray(o.items)) {
+        o.items.forEach((item: any) => {
+          const key = `${item.color}-${item.size}`;
+          if (stock[key] !== undefined) {
+            stock[key] += (item.quantity || 1);
+          }
+        });
+      } else {
+        const key = `${o.color}-${o.size}`;
+        if (stock[key] !== undefined) {
+          stock[key]++;
+        }
       }
     });
     return stock;
@@ -391,7 +400,7 @@ export default function Admin() {
             <span className="text-slate-400 text-xs sm:text-sm">إجمالي المبيعات (مكتمل)</span>
             <div className="mt-2 flex items-baseline gap-1">
               <span className="text-xl sm:text-2xl font-black text-emerald-400">
-                {orders.filter(o => o.status === 'completed').length * 3700}
+                {orders.filter(o => o.status === 'completed').reduce((sum, o) => sum + (o.price || 3700), 0)}
               </span>
               <span className="text-xs text-slate-500">دج</span>
             </div>
@@ -401,7 +410,7 @@ export default function Admin() {
             <span className="text-slate-400 text-xs sm:text-sm">المبيعات المتوقعة</span>
             <div className="mt-2 flex items-baseline gap-1">
               <span className="text-xl sm:text-2xl font-black text-blue-400">
-                {orders.filter(o => ['in_delivery', 'at_office', 'on_the_way', 'pending'].includes(o.status)).length * 3700}
+                {orders.filter(o => ['in_delivery', 'at_office', 'on_the_way', 'pending'].includes(o.status)).reduce((sum, o) => sum + (o.price || 3700), 0)}
               </span>
               <span className="text-xs text-slate-500">دج</span>
             </div>
@@ -468,13 +477,28 @@ export default function Admin() {
                           {order.phone}
                         </a>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="inline-flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
-                          <span className="w-3 h-3 rounded-full bg-teal-500" />
-                          <span className="font-medium">{order.color}</span>
-                          <span className="text-slate-500 mx-1">|</span>
-                          <span className="font-bold font-mono">{order.size}</span>
-                        </div>
+                       <td className="px-6 py-4">
+                        {order.items && Array.isArray(order.items) ? (
+                          <div className="flex flex-col gap-1.5">
+                            {order.items.map((item: any, idx: number) => (
+                              <div key={idx} className="inline-flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700/50 self-start text-xs">
+                                <span className="w-2 h-2 rounded-full bg-teal-500" />
+                                <span className="font-medium text-slate-300">{item.color}</span>
+                                <span className="text-slate-600">|</span>
+                                <span className="font-bold font-mono text-slate-300">{item.size}</span>
+                                <span className="text-slate-600">|</span>
+                                <span className="text-teal-400 font-bold font-mono">x{item.quantity}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+                            <span className="w-3 h-3 rounded-full bg-teal-500" />
+                            <span className="font-medium">{order.color}</span>
+                            <span className="text-slate-500 mx-1">|</span>
+                            <span className="font-bold font-mono">{order.size}</span>
+                          </div>
+                        )}
                         <div className="text-xs text-teal-400 font-bold mt-1.5 font-mono text-right">
                           {order.price || 3700} دج
                         </div>

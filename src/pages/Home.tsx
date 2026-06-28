@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, ShieldCheck, Truck, Clock, ArrowLeft, Search, CheckCircle2, Package, MapPin, Calendar, Map } from "lucide-react";
+import { Check, ShieldCheck, Truck, Clock, ArrowLeft, Search, CheckCircle2, Package, MapPin, Calendar, Map, Plus, Trash2 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { db } from "../lib/firebase";
 import { collection, addDoc, getDoc, doc, setDoc } from "firebase/firestore";
@@ -44,8 +44,54 @@ const STATUS_LABELS: Record<string, { label: string, colorClass: string }> = {
 };
 
 export default function Home() {
-  const [selectedColor, setSelectedColor] = useState(COLORS[0]);
-  const [selectedSize, setSelectedSize] = useState("M");
+  const [orderItems, setOrderItems] = useState<Array<{ id: string, color: typeof COLORS[0], size: string, quantity: number }>>([
+    { id: "initial-item", color: COLORS[0], size: "M", quantity: 1 }
+  ]);
+  const [activeItemIndex, setActiveItemIndex] = useState(0);
+
+  const selectedColor = orderItems[activeItemIndex]?.color || COLORS[0];
+  const selectedSize = orderItems[activeItemIndex]?.size || "M";
+
+  const setSelectedColor = (color: typeof COLORS[0]) => {
+    setOrderItems(prev => prev.map((item, idx) => idx === activeItemIndex ? { ...item, color } : item));
+  };
+
+  const setSelectedSize = (size: string) => {
+    setOrderItems(prev => prev.map((item, idx) => idx === activeItemIndex ? { ...item, size } : item));
+  };
+
+  const handleUpdateQty = (idx: number, delta: number) => {
+    setOrderItems(prev => prev.map((item, i) => {
+      if (i === idx) {
+        const newQty = Math.max(1, item.quantity + delta);
+        return { ...item, quantity: newQty };
+      }
+      return item;
+    }));
+  };
+
+  const handleDeleteItem = (idx: number) => {
+    if (orderItems.length <= 1) return;
+    setOrderItems(prev => prev.filter((_, i) => i !== idx));
+    setActiveItemIndex(prev => {
+      const newLen = orderItems.length - 1;
+      if (prev >= newLen) {
+        return Math.max(0, newLen - 1);
+      }
+      return prev;
+    });
+  };
+
+  const handleAddItem = () => {
+    const newItem = {
+      id: Math.random().toString(),
+      color: COLORS[0],
+      size: "M",
+      quantity: 1
+    };
+    setOrderItems(prev => [...prev, newItem]);
+    setActiveItemIndex(orderItems.length);
+  };
   
   // Form State
   const [name, setName] = useState("");
@@ -74,14 +120,28 @@ export default function Home() {
 
       const customTrackingId = 'JM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
 
+      const totalQty = orderItems.reduce((sum, item) => sum + item.quantity, 0);
+      const totalPrice = orderItems.reduce((sum, item) => sum + (3700 * item.quantity), 0);
+
+      // Color and size strings for backward compatibility and Sheets view
+      const summaryColor = orderItems.map(item => `${item.color.name} (x${item.quantity})`).join(', ');
+      const summarySize = orderItems.map(item => `${item.size} (x${item.quantity})`).join(', ');
+
       const orderData = {
         customerName: name,
         phone,
         address: fullAddress,
         deliveryMethod,
-        color: selectedColor.name,
-        size: selectedSize,
-        price: 3700,
+        color: summaryColor,
+        size: summarySize,
+        price: totalPrice,
+        quantity: totalQty,
+        items: orderItems.map(item => ({
+          color: item.color.name,
+          size: item.size,
+          quantity: item.quantity,
+          price: 3700
+        })),
         cod: true,
         status: "pending",
         createdAt: new Date().toISOString()
@@ -357,7 +417,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div>
+            <div className="mt-4">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium text-slate-200">المقاس:</h3>
                 <span className="text-sm text-teal-400 underline decoration-teal-400/30 cursor-pointer">دليل المقاسات</span>
@@ -382,6 +442,83 @@ export default function Home() {
                 ))}
               </div>
             </div>
+
+            {/* List of items in the current order */}
+            <div className="mt-6 pt-6 border-t border-slate-800" dir="rtl">
+              <h4 className="text-sm font-semibold text-slate-400 mb-3 text-right">القطع المطلوبة في هذا الطلب ({orderItems.length}):</h4>
+              <div className="space-y-3">
+                {orderItems.map((item, idx) => (
+                  <div 
+                    key={item.id}
+                    onClick={() => setActiveItemIndex(idx)}
+                    className={cn(
+                      "flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer relative overflow-hidden text-right",
+                      activeItemIndex === idx 
+                        ? "bg-slate-800/80 border-teal-500/50 shadow-[0_0_15px_rgba(45,212,191,0.1)]" 
+                        : "bg-slate-900/40 border-slate-800/80 hover:border-slate-700"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-5 h-5 rounded-full border border-slate-700 flex-shrink-0" style={{ backgroundColor: item.color.hex }} />
+                      <div className="text-right">
+                        <div className="text-sm font-bold text-slate-200">
+                          JOAmedic - {item.color.name}
+                        </div>
+                        <div className="text-xs text-slate-400 mt-0.5">
+                          المقاس: <span className="text-teal-400 font-semibold">{item.size}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
+                      {/* Quantity Selector */}
+                      <div className="flex items-center bg-slate-950/80 border border-slate-800 rounded-lg px-2 py-1" dir="ltr">
+                        <button 
+                          type="button"
+                          onClick={() => handleUpdateQty(idx, -1)}
+                          className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-teal-400 text-lg transition-colors font-bold"
+                        >
+                          -
+                        </button>
+                        <span className="w-8 text-center text-sm font-mono font-bold text-slate-200">{item.quantity}</span>
+                        <button 
+                          type="button"
+                          onClick={() => handleUpdateQty(idx, 1)}
+                          className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-teal-400 text-lg transition-colors font-bold"
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      {orderItems.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteItem(idx)}
+                          className="text-red-400 hover:text-red-300 p-1.5 rounded-lg bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-all"
+                          title="حذف القطعة"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    {activeItemIndex === idx && (
+                      <div className="absolute top-0 left-0 bg-teal-500 text-slate-950 text-[10px] font-bold px-2 py-0.5 rounded-br-lg">
+                        تعديل حالي
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAddItem}
+                className="w-full mt-4 bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/20 hover:border-teal-500/30 text-teal-300 py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all font-semibold text-sm"
+              >
+                <Plus className="w-4 h-4 text-teal-400" /> إضافة قطعة أخرى للطلب (بلون أو مقاس مختلف)
+              </button>
+            </div>
           </div>
 
           {/* Checkout Form */}
@@ -405,7 +542,15 @@ export default function Home() {
                     </div>
                   )}
                   <button 
-                    onClick={() => { setIsSuccess(false); setName(""); setPhone(""); setAddress(""); setSuccessOrder(null); }}
+                    onClick={() => { 
+                      setIsSuccess(false); 
+                      setName(""); 
+                      setPhone(""); 
+                      setAddress(""); 
+                      setSuccessOrder(null); 
+                      setOrderItems([{ id: "initial-item", color: COLORS[0], size: "M", quantity: 1 }]);
+                      setActiveItemIndex(0);
+                    }}
                     className="flex items-center gap-2 text-teal-400 hover:text-teal-300 transition-colors"
                   >
                     <ArrowLeft className="w-4 h-4" /> العودة للتسوق
@@ -419,9 +564,13 @@ export default function Home() {
                 <Truck className="w-6 h-6 text-teal-400" />
                 <h2 className="text-2xl font-bold">الدفع عند الاستلام</h2>
               </div>
-              <div className="bg-teal-500/10 border border-teal-500/30 rounded-xl px-4 py-2 flex items-center gap-2 self-start sm:self-auto">
-                <span className="text-sm text-slate-400">السعر:</span>
-                <span className="text-xl font-black text-teal-400">3700 دج</span>
+              <div className="bg-teal-500/10 border border-teal-500/30 rounded-xl px-4 py-2 flex items-center gap-2 self-start sm:self-auto text-right" dir="rtl">
+                <span className="text-sm text-slate-400">
+                  السعر الإجمالي ({orderItems.reduce((sum, item) => sum + item.quantity, 0)} قطع):
+                </span>
+                <span className="text-xl font-black text-teal-400">
+                  {orderItems.reduce((sum, item) => sum + (3700 * item.quantity), 0)} دج
+                </span>
               </div>
             </div>
             
