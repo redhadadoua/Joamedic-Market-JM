@@ -580,12 +580,14 @@ export default function Admin() {
                             placeholder="موقع الطرد (مثلاً: مستودع الجزائر)"
                             className="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-teal-500 transition-colors"
                           />
-                          <button
-                            onClick={() => deleteOrder(order.id)}
-                            className="w-full mt-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 py-1.5 rounded-lg text-xs font-bold transition-colors"
-                          >
-                            حذف الطلب
-                          </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => deleteOrder(order.id)}
+                              className="w-full mt-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                            >
+                              حذف الطلب
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
