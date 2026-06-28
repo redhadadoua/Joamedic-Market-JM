@@ -17,7 +17,10 @@ export async function createSpreadsheet(title: string = "JOAmedic Orders"): Prom
       sheets: [
         {
           properties: {
-            title: "Orders"
+            title: "Orders",
+            gridProperties: {
+              frozenRowCount: 1
+            }
           }
         }
       ]
@@ -30,34 +33,105 @@ export async function createSpreadsheet(title: string = "JOAmedic Orders"): Prom
   }
 
   const data = await res.json();
-  
-  // Set header row
-  await appendRowToSheet(data.spreadsheetId, [
-    "Order ID", "Date", "Customer Name", "Phone", "Address", "Delivery Method", "Color", "Size", "Status"
-  ]);
+  const spreadsheetId = data.spreadsheetId;
+  const sheetId = data.sheets[0].properties.sheetId;
 
-  return data.spreadsheetId;
+  // Apply beautiful formatting
+  await formatSpreadsheet(spreadsheetId, sheetId);
+
+  return spreadsheetId;
 }
 
-export async function appendRowToSheet(spreadsheetId: string, values: string[]) {
+async function formatSpreadsheet(spreadsheetId: string, sheetId: number) {
+  const token = await getAccessToken();
+  if (!token) return;
+
+  const batchUpdateRequest = {
+    requests: [
+      {
+        updateSheetProperties: {
+          properties: {
+            sheetId: sheetId,
+            rightToLeft: true // Enable RTL for Arabic
+          },
+          fields: "rightToLeft"
+        }
+      },
+      {
+        repeatCell: {
+          range: {
+            sheetId: sheetId,
+            startRowIndex: 0,
+            endRowIndex: 1
+          },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: { red: 0.05, green: 0.5, blue: 0.5 }, // Teal color
+              horizontalAlignment: "CENTER",
+              textFormat: {
+                foregroundColor: { red: 1.0, green: 1.0, blue: 1.0 },
+                fontSize: 12,
+                bold: true
+              }
+            }
+          },
+          fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"
+        }
+      },
+      {
+        autoResizeDimensions: {
+          dimensions: {
+            sheetId: sheetId,
+            dimension: "COLUMNS",
+            startIndex: 0,
+            endIndex: 11
+          }
+        }
+      }
+    ]
+  };
+
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(batchUpdateRequest)
+  });
+}
+
+export async function syncAllOrdersToSheet(spreadsheetId: string, values: string[][]) {
   const token = await getAccessToken();
   if (!token) throw new Error("No Google access token available");
 
-  const range = 'Orders!A:I'; // Assuming we have 9 columns
-  const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}:append?valueInputOption=USER_ENTERED`, {
+  // First, clear the existing data
+  const clearRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Orders!A:Z:clear`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!clearRes.ok) {
+    console.error("Failed to clear sheet before sync");
+  }
+
+  // Insert the new data including headers
+  const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Orders!A1:append?valueInputOption=USER_ENTERED`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      values: [values]
+      values: values
     })
   });
 
   if (!res.ok) {
     const errorData = await res.json();
-    throw new Error(`Failed to append row: ${JSON.stringify(errorData)}`);
+    throw new Error(`Failed to sync orders: ${JSON.stringify(errorData)}`);
   }
 
   return await res.json();

@@ -4,8 +4,8 @@ import { motion } from "framer-motion";
 import { LogOut, RefreshCcw, FileSpreadsheet, Package, CheckCircle2, Clock, Phone, UserPlus, ShieldAlert, Mail, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { initAuth, googleSignIn, emailSignIn, logout, getAccessToken, db } from "../lib/firebase";
-import { createSpreadsheet, appendRowToSheet } from "../lib/sheets";
-import { collection, onSnapshot, doc, updateDoc, setDoc, getDoc } from "firebase/firestore";
+import { createSpreadsheet, syncAllOrdersToSheet } from "../lib/sheets";
+import { collection, onSnapshot, doc, updateDoc, setDoc, getDoc, deleteDoc } from "firebase/firestore";
 import { cn } from "../lib/utils";
 import { usePageMetadata } from "../hooks/usePageMetadata";
 
@@ -115,37 +115,47 @@ export default function Admin() {
     };
   }, [user, isAuthorized]);
 
-  // Sync to sheets side effect
-  useEffect(() => {
+  const syncDataToSheets = async (currentOrders: any[]) => {
     if (!user || !spreadsheetId) return;
+    try {
+      const values = [
+        ["رقم الطلب", "التاريخ", "اسم الزبون", "رقم الهاتف", "العنوان", "طريقة التوصيل", "اللون", "المقاس", "الحالة"]
+      ];
+      
+      currentOrders.forEach(order => {
+        values.push([
+          order.id,
+          new Date(order.createdAt).toLocaleString('ar-DZ'),
+          order.customerName,
+          order.phone,
+          order.address,
+          order.deliveryMethod === 'home' ? 'توصيل منزلي' : 'مكتب',
+          order.color || '-',
+          order.size || '-',
+          STATUSES.find(s => s.id === order.status)?.label || order.status
+        ]);
+      });
 
-    const syncUnsyncedOrders = async () => {
-      const unsynced = orders.filter(o => !o.syncedToSheets);
+      await syncAllOrdersToSheet(spreadsheetId, values);
+      
+      // Update synced status for unsynced orders
+      const unsynced = currentOrders.filter(o => !o.syncedToSheets);
       for (const order of unsynced) {
-        try {
-          await appendRowToSheet(spreadsheetId, [
-            order.id,
-            new Date(order.createdAt).toLocaleString('ar-DZ'),
-            order.customerName,
-            order.phone,
-            order.address,
-            order.deliveryMethod === 'home' ? 'توصيل منزلي' : 'مكتب',
-            order.color,
-            order.size,
-            order.status
-          ]);
-          
-          await updateDoc(doc(db, "orders", order.id), { syncedToSheets: true });
-        } catch (e) {
-          console.error("Failed to sync order", order.id, e);
-        }
+        await updateDoc(doc(db, "orders", order.id), { syncedToSheets: true });
       }
-    };
-
-    if (orders.some(o => !o.syncedToSheets)) {
-      syncUnsyncedOrders();
+      return true;
+    } catch (e) {
+      console.error("Failed to sync to sheets", e);
+      return false;
     }
-  }, [orders, user, spreadsheetId]);
+  };
+
+  // Auto-sync new orders
+  useEffect(() => {
+    if (orders.length > 0 && orders.some(o => !o.syncedToSheets) && spreadsheetId) {
+      syncDataToSheets(orders);
+    }
+  }, [orders, spreadsheetId]);
 
   const handleLogin = async () => {
     setIsLoggingIn(true);
@@ -208,9 +218,28 @@ export default function Admin() {
     try {
       await updateDoc(doc(db, "orders", orderId), { status: newStatus });
       toast.success("تم تحديث حالة الطلب");
+      if (spreadsheetId) {
+        const updatedOrders = orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o);
+        await syncDataToSheets(updatedOrders);
+      }
     } catch (e) {
       console.error(e);
       toast.error("فشل في تحديث حالة الطلب");
+    }
+  };
+
+  const deleteOrder = async (orderId: string) => {
+    if (!window.confirm("هل أنت متأكد من رغبتك في حذف هذا الطلب نهائياً؟")) return;
+    try {
+      await deleteDoc(doc(db, "orders", orderId));
+      toast.success("تم حذف الطلب بنجاح");
+      if (spreadsheetId) {
+        const updatedOrders = orders.filter(o => o.id !== orderId);
+        await syncDataToSheets(updatedOrders);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("فشل في حذف الطلب");
     }
   };
 
@@ -551,6 +580,12 @@ export default function Admin() {
                             placeholder="موقع الطرد (مثلاً: مستودع الجزائر)"
                             className="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-teal-500 transition-colors"
                           />
+                          <button
+                            onClick={() => deleteOrder(order.id)}
+                            className="w-full mt-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                          >
+                            حذف الطلب
+                          </button>
                         </div>
                       </td>
                     </tr>
