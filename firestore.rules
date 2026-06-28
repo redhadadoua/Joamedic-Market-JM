@@ -26,7 +26,7 @@ service cloud.firestore {
         // Validate logic
         request.resource.data.status == 'pending' &&
         request.resource.data.quantity > 0 &&
-        request.resource.data.price == (request.resource.data.quantity * 3700);
+        request.resource.data.price >= (request.resource.data.quantity * 3700);
         
       allow get: if true;
       allow list, update, delete: if isAdmin() || isModerator();
@@ -38,7 +38,8 @@ service cloud.firestore {
     }
     
     match /settings/{settingId} {
-      allow read, write: if isAdmin();
+      allow read: if settingId == 'general' || isAdmin() || isModerator();
+      allow write: if isAdmin();
     }
   }
 }

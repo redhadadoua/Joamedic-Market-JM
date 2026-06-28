@@ -40,6 +40,8 @@ export default function Admin() {
   const [inventory, setInventory] = useState<Record<string, number>>({});
   const [isEditingInventory, setIsEditingInventory] = useState(false);
   const [editedInventory, setEditedInventory] = useState<Record<string, number>>({});
+  const [whatsappNumber, setWhatsappNumber] = useState("213000000000");
+  const [isEditingWhatsapp, setIsEditingWhatsapp] = useState(false);
   
   const isAdmin = user?.email?.toLowerCase() === 'redhadadoua@gmail.com';
 
@@ -65,10 +67,12 @@ export default function Admin() {
       });
     }
 
-    // Fetch spreadsheet ID from Firestore instead of Express API
+    // Fetch spreadsheet ID & whatsappNumber from Firestore
     getDoc(doc(db, "settings", "general")).then((docSnap) => {
       if (docSnap.exists()) {
-        setSpreadsheetId(docSnap.data().spreadsheetId);
+        const data = docSnap.data();
+        setSpreadsheetId(data.spreadsheetId);
+        setWhatsappNumber(data.whatsappNumber || "213000000000");
       }
     });
 
@@ -260,6 +264,17 @@ export default function Admin() {
     }
   };
 
+  const handleSaveWhatsapp = async () => {
+    try {
+      await setDoc(doc(db, "settings", "general"), { whatsappNumber }, { merge: true });
+      setIsEditingWhatsapp(false);
+      toast.success("تم حفظ رقم الواتساب بنجاح");
+    } catch (e) {
+      console.error("Failed to save whatsapp number", e);
+      toast.error("فشل في حفظ رقم الواتساب");
+    }
+  };
+
   const handleEditInventoryStart = () => {
     setEditedInventory({ ...inventory });
     setIsEditingInventory(true);
@@ -384,12 +399,38 @@ export default function Admin() {
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900/50 backdrop-blur-md border border-slate-800 p-6 rounded-2xl">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900/50 backdrop-blur-md border border-slate-800 p-6 rounded-2xl">
           <div>
             <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-l from-teal-400 to-blue-500">JOAmedic Admin</h1>
             <p className="text-slate-400 text-sm mt-1">{user?.email}</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {isAdmin && (
+              <div className="flex items-center gap-2 bg-slate-800/50 border border-slate-700 p-1.5 rounded-lg">
+                {isEditingWhatsapp ? (
+                  <>
+                    <input 
+                      type="text" 
+                      value={whatsappNumber}
+                      onChange={e => setWhatsappNumber(e.target.value)}
+                      placeholder="رقم الواتساب (مثال: 213555...)"
+                      className="bg-slate-900 border border-slate-700 rounded-md px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-teal-500 w-48"
+                      dir="ltr"
+                    />
+                    <button onClick={handleSaveWhatsapp} className="bg-teal-600 hover:bg-teal-500 text-white px-3 py-1.5 rounded-md text-sm transition">حفظ</button>
+                    <button onClick={() => setIsEditingWhatsapp(false)} className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-md text-sm transition">إلغاء</button>
+                  </>
+                ) : (
+                  <>
+                    <div className="px-3 py-1.5 text-sm flex items-center gap-2 text-slate-300 font-mono" dir="ltr">
+                      <span className="w-2 h-2 rounded-full bg-[#25D366]"></span>
+                      {whatsappNumber || "213000000000"}
+                    </div>
+                    <button onClick={() => setIsEditingWhatsapp(true)} className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-md text-sm transition border border-slate-700/50">تعديل</button>
+                  </>
+                )}
+              </div>
+            )}
             {isAdmin && (
               !spreadsheetId ? (
                 <button 

@@ -11,7 +11,7 @@ import { Toaster } from "sonner";
 export default function App() {
   return (
     <div dir="rtl" className="min-h-screen bg-slate-900 text-slate-100 font-sans selection:bg-teal-500/30">
-      <Toaster position="top-center" richColors />
+      <Toaster position="top-center" richColors toastOptions={{ style: { fontFamily: 'Tajawal, sans-serif' } }} />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/admin" element={<Admin />} />
