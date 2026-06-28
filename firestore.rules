@@ -33,12 +33,12 @@ service cloud.firestore {
     }
     
     match /moderators/{email} {
-      allow read: if isAdmin() || isModerator();
+      allow read: if isAdmin() || isModerator() || (request.auth != null && request.auth.token.email.lower() == email);
       allow write: if isAdmin();
     }
     
     match /settings/{settingId} {
-      allow read: if settingId == 'general' || isAdmin() || isModerator();
+      allow read: if true;
       allow write: if isAdmin();
     }
   }
