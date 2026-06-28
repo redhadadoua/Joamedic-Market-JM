@@ -502,11 +502,7 @@ export default function Home() {
                       )}
                     </div>
 
-                    {activeItemIndex === idx && (
-                      <div className="absolute top-0 left-0 bg-teal-500 text-slate-950 text-[10px] font-bold px-2 py-0.5 rounded-br-lg">
-                        تعديل حالي
-                      </div>
-                    )}
+                    {/* Removed 'تعديل حالي' label indicator */}
                   </div>
                 ))}
               </div>
