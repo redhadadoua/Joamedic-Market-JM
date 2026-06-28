@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { User } from "firebase/auth";
 import { motion } from "framer-motion";
-import { LogOut, RefreshCcw, FileSpreadsheet, Package, CheckCircle2, Clock, Phone, UserPlus, ShieldAlert } from "lucide-react";
-import { initAuth, googleSignIn, logout, getAccessToken, db } from "../lib/firebase";
+import { LogOut, RefreshCcw, FileSpreadsheet, Package, CheckCircle2, Clock, Phone, UserPlus, ShieldAlert, Mail, Lock } from "lucide-react";
+import { initAuth, googleSignIn, emailSignIn, logout, getAccessToken, db } from "../lib/firebase";
 import { createSpreadsheet, appendRowToSheet } from "../lib/sheets";
 import { collection, onSnapshot, doc, updateDoc, setDoc, getDoc } from "firebase/firestore";
 import { cn } from "../lib/utils";
@@ -23,6 +23,9 @@ export default function Admin() {
   const [needsAuth, setNeedsAuth] = useState<boolean | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState<string | null>(null);
   
   const [orders, setOrders] = useState<any[]>([]);
   const [spreadsheetId, setSpreadsheetId] = useState<string | null>(null);
@@ -154,6 +157,29 @@ export default function Admin() {
     }
   };
 
+  const handleEmailLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password) return;
+    setIsLoggingIn(true);
+    setLoginError(null);
+    try {
+      const u = await emailSignIn(email.trim(), password);
+      setUser(u);
+      setNeedsAuth(false);
+    } catch (err: any) {
+      console.error('Login failed:', err);
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        setLoginError("البريد الإلكتروني أو كلمة السر غير صحيحة.");
+      } else if (err.code === 'auth/invalid-email') {
+        setLoginError("صيغة البريد الإلكتروني غير صحيحة.");
+      } else {
+        setLoginError("حدث خطأ أثناء تسجيل الدخول. يرجى التحقق من تفعيل تسجيل الدخول بالإيميل وكلمة السر في Firebase.");
+      }
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
   const handleSetupSheets = async () => {
     setIsCreatingSheet(true);
     try {
@@ -243,33 +269,68 @@ export default function Admin() {
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 10, repeat: Infinity }} className="absolute -top-[20%] -right-[10%] w-[50vw] h-[50vw] rounded-full bg-slate-800/50 blur-[100px]" />
         </div>
-        <div className="backdrop-blur-xl bg-slate-900/60 border border-slate-700 p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center relative z-10">
-          <div className="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner">
+        <div className="backdrop-blur-xl bg-slate-900/60 border border-slate-700/80 p-8 rounded-3xl shadow-2xl max-w-md w-full relative z-10" dir="rtl">
+          <div className="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner border border-slate-700">
             <Package className="w-8 h-8 text-teal-400" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-100 mb-2">لوحة التحكم</h1>
-          <p className="text-slate-400 text-sm mb-8">تسجيل الدخول كمسؤول حصراً</p>
-          
-          <button 
-            onClick={handleLogin} 
-            disabled={isLoggingIn}
-            className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 py-3 px-4 rounded-xl flex items-center justify-center gap-3 transition-colors"
-          >
-            {isLoggingIn ? (
-              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-5 h-5 border-2 border-slate-400 border-t-transparent rounded-full" />
-            ) : (
-              <>
-                <svg className="w-5 h-5" viewBox="0 0 48 48">
-                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-                  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
-                  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-                  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-                  <path fill="none" d="M0 0h48v48H0z"></path>
-                </svg>
-                تسجيل الدخول باستخدام جوجل
-              </>
+          <h1 className="text-2xl font-bold text-slate-100 text-center mb-2">لوحة التحكم</h1>
+          <p className="text-slate-400 text-sm text-center mb-8">تسجيل الدخول للمسؤولين والمشرفين</p>
+
+          <form onSubmit={handleEmailLoginSubmit} className="space-y-5 text-right">
+            {loginError && (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl p-4 text-center">
+                {loginError}
+              </div>
             )}
-          </button>
+
+            <div className="space-y-2">
+              <label className="text-slate-300 text-sm font-medium block">البريد الإلكتروني</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-500">
+                  <Mail className="w-5 h-5" />
+                </span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@example.com"
+                  className="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-3 pr-10 pl-4 text-slate-200 text-sm focus:outline-none focus:border-teal-500 transition-colors placeholder:text-slate-600 font-mono text-left"
+                  dir="ltr"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-slate-300 text-sm font-medium block">كلمة السر</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-500">
+                  <Lock className="w-5 h-5" />
+                </span>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-3 pr-10 pl-4 text-slate-200 text-sm focus:outline-none focus:border-teal-500 transition-colors placeholder:text-slate-600 font-mono text-left"
+                  dir="ltr"
+                  required
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoggingIn}
+              className="w-full mt-6 bg-teal-600 hover:bg-teal-500 text-white py-3 px-4 rounded-xl flex items-center justify-center gap-3 font-semibold transition-colors disabled:opacity-50"
+            >
+              {isLoggingIn ? (
+                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
+              ) : (
+                "تسجيل الدخول"
+              )}
+            </button>
+          </form>
         </div>
       </div>
     );
