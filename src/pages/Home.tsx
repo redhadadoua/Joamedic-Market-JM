@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, ShieldCheck, Truck, Clock, ArrowLeft, Search, CheckCircle2, Package, MapPin, Calendar, Map, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import { db } from "../lib/firebase";
 import { collection, addDoc, getDoc, doc, setDoc } from "firebase/firestore";
@@ -33,6 +34,7 @@ const SIZES = [
 ];
 
 import { getWilayaList, getBaladyiatsForWilaya } from "../utils/wilayas69";
+import { usePageMetadata } from "../hooks/usePageMetadata";
 
 const STATUS_LABELS: Record<string, { label: string, colorClass: string }> = {
   pending: { label: 'قيد المعالجة', colorClass: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
@@ -44,6 +46,8 @@ const STATUS_LABELS: Record<string, { label: string, colorClass: string }> = {
 };
 
 export default function Home() {
+  usePageMetadata("Joamedic - أحذية طبية مريحة", "أحذية Joamedic الطبية، راحة يومية وأناقة في كل خطوة.");
+
   const [orderItems, setOrderItems] = useState<Array<{ id: string, color: typeof COLORS[0], size: string, quantity: number }>>([
     { id: "initial-item", color: COLORS[0], size: "M", quantity: 1 }
   ]);
@@ -118,7 +122,13 @@ export default function Home() {
         ? `${selectedWilaya} - ${selectedCommune}\n${address}`
         : `${selectedWilaya} - ${selectedCommune} (استلام من المكتب)`;
 
-      const customTrackingId = 'JM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+      const generateSecureTrackingId = () => {
+        const array = new Uint8Array(8);
+        window.crypto.getRandomValues(array);
+        return 'JM-' + Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('').substring(0, 10).toUpperCase();
+      };
+      
+      const customTrackingId = generateSecureTrackingId();
 
       const totalQty = orderItems.reduce((sum, item) => sum + item.quantity, 0);
       const totalPrice = orderItems.reduce((sum, item) => sum + (3700 * item.quantity), 0);
@@ -130,6 +140,8 @@ export default function Home() {
       const orderData = {
         customerName: name,
         phone,
+        wilaya: selectedWilaya,
+        baladiya: selectedCommune,
         address: fullAddress,
         deliveryMethod,
         color: summaryColor,
@@ -150,9 +162,10 @@ export default function Home() {
       await setDoc(doc(db, "orders", customTrackingId), orderData);
       setSuccessOrder({ id: customTrackingId, ...orderData });
       setIsSuccess(true);
+      toast.success("تم تأكيد الطلب بنجاح");
     } catch (error) {
       console.error(error);
-      alert("حدث خطأ أثناء تأكيد الطلب. يرجى المحاولة مرة أخرى.");
+      toast.error("حدث خطأ أثناء تأكيد الطلب. يرجى المحاولة مرة أخرى.");
     } finally {
       setIsSubmitting(false);
     }
@@ -169,10 +182,12 @@ export default function Home() {
         setTrackingResult({ id: docSnap.id, ...docSnap.data() });
       } else {
         setTrackingResult({ notFound: true });
+        toast.error("عذراً، لم نتمكن من العثور على طلب بهذا الرقم.");
       }
     } catch (error) {
       console.error(error);
       setTrackingResult({ notFound: true });
+      toast.error("حدث خطأ أثناء البحث عن الطلب.");
     } finally {
       setIsSearching(false);
     }
@@ -303,7 +318,7 @@ export default function Home() {
                             </div>
                             <div>
                               <div className="text-slate-500 text-xs mb-0.5">وجهة التوصيل</div>
-                              <div className="text-slate-200 text-sm font-medium">{trackingResult.wilaya} {trackingResult.commune ? `- ${trackingResult.commune}` : ''}</div>
+                              <div className="text-slate-200 text-sm font-medium">{trackingResult.wilaya} {trackingResult.baladiya ? `- ${trackingResult.baladiya}` : ''}</div>
                               <div className="text-slate-400 text-xs mt-0.5">{trackingResult.deliveryMethod === 'home' ? 'توصيل إلى باب المنزل' : 'توصيل إلى مكتب شركة الشحن'}</div>
                             </div>
                           </div>

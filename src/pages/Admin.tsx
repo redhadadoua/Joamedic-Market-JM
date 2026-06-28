@@ -2,10 +2,12 @@ import React, { useState, useEffect, useMemo } from "react";
 import { User } from "firebase/auth";
 import { motion } from "framer-motion";
 import { LogOut, RefreshCcw, FileSpreadsheet, Package, CheckCircle2, Clock, Phone, UserPlus, ShieldAlert, Mail, Lock } from "lucide-react";
+import { toast } from "sonner";
 import { initAuth, googleSignIn, emailSignIn, logout, getAccessToken, db } from "../lib/firebase";
 import { createSpreadsheet, appendRowToSheet } from "../lib/sheets";
 import { collection, onSnapshot, doc, updateDoc, setDoc, getDoc } from "firebase/firestore";
 import { cn } from "../lib/utils";
+import { usePageMetadata } from "../hooks/usePageMetadata";
 
 const COLORS = ["رمادي", "أسود", "أبيض", "أزرق سماوي", "أزرق ملكي", "أزرق داكن", "أحمر عنابي"];
 const SIZES = ["S", "M", "L", "XL", "XXL"];
@@ -20,6 +22,8 @@ const STATUSES = [
 ];
 
 export default function Admin() {
+  usePageMetadata("Joamedic - لوحة التحكم", "إدارة طلبات متجر Joamedic.");
+
   const [needsAuth, setNeedsAuth] = useState<boolean | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -149,9 +153,11 @@ export default function Admin() {
       if (res?.user) {
         setUser(res.user);
         setNeedsAuth(false);
+        toast.success("تم تسجيل الدخول بنجاح");
       }
     } catch (err) {
       console.error('Login failed:', err);
+      toast.error("حدث خطأ أثناء تسجيل الدخول");
     } finally {
       setIsLoggingIn(false);
     }
@@ -166,15 +172,17 @@ export default function Admin() {
       const u = await emailSignIn(email.trim(), password);
       setUser(u);
       setNeedsAuth(false);
+      toast.success("تم تسجيل الدخول بنجاح");
     } catch (err: any) {
       console.error('Login failed:', err);
+      let errorMsg = "حدث خطأ أثناء تسجيل الدخول. يرجى التحقق من الإعدادات.";
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        setLoginError("البريد الإلكتروني أو كلمة السر غير صحيحة.");
+        errorMsg = "البريد الإلكتروني أو كلمة السر غير صحيحة.";
       } else if (err.code === 'auth/invalid-email') {
-        setLoginError("صيغة البريد الإلكتروني غير صحيحة.");
-      } else {
-        setLoginError("حدث خطأ أثناء تسجيل الدخول. يرجى التحقق من تفعيل تسجيل الدخول بالإيميل وكلمة السر في Firebase.");
+        errorMsg = "صيغة البريد الإلكتروني غير صحيحة.";
       }
+      setLoginError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsLoggingIn(false);
     }
@@ -186,9 +194,10 @@ export default function Admin() {
       const id = await createSpreadsheet();
       setSpreadsheetId(id);
       await setDoc(doc(db, "settings", "general"), { spreadsheetId: id }, { merge: true });
+      toast.success("تم ربط Google Sheets بنجاح");
     } catch (error) {
       console.error(error);
-      alert("فشل في إنشاء ملف Google Sheets.");
+      toast.error("فشل في إنشاء أو ربط ملف Google Sheets.");
     } finally {
       setIsCreatingSheet(false);
     }
@@ -197,16 +206,20 @@ export default function Admin() {
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
       await updateDoc(doc(db, "orders", orderId), { status: newStatus });
+      toast.success("تم تحديث حالة الطلب");
     } catch (e) {
       console.error(e);
+      toast.error("فشل في تحديث حالة الطلب");
     }
   };
 
   const updateOrderLocation = async (orderId: string, location: string) => {
     try {
       await updateDoc(doc(db, "orders", orderId), { trackingLocation: location });
+      toast.success("تم تحديث موقع الطلب");
     } catch (e) {
       console.error(e);
+      toast.error("فشل في تحديث موقع الطلب");
     }
   };
 
@@ -216,8 +229,10 @@ export default function Admin() {
     try {
       await setDoc(doc(db, "moderators", newModerator.trim().toLowerCase()), { addedAt: new Date().toISOString() });
       setNewModerator("");
+      toast.success("تمت إضافة المشرف بنجاح");
     } catch (e) {
       console.error("Failed to add moderator", e);
+      toast.error("فشل في إضافة المشرف");
     }
   };
 
@@ -227,8 +242,10 @@ export default function Admin() {
       // Need to use deleteDoc, let's import it first
       const { deleteDoc } = await import("firebase/firestore");
       await deleteDoc(doc(db, "moderators", email));
+      toast.success("تمت إزالة المشرف");
     } catch (e) {
       console.error("Failed to remove moderator", e);
+      toast.error("فشل في إزالة المشرف");
     }
   };
 
@@ -236,8 +253,10 @@ export default function Admin() {
     try {
       await setDoc(doc(db, "settings", "inventory"), editedInventory);
       setIsEditingInventory(false);
+      toast.success("تم حفظ المخزون بنجاح");
     } catch (e) {
       console.error("Failed to save inventory", e);
+      toast.error("فشل في حفظ المخزون");
     }
   };
 
