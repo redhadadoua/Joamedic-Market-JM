@@ -15,7 +15,19 @@ service cloud.firestore {
     }
     
     match /orders/{orderId} {
-      allow create: if true;
+      allow create: if 
+        // Validate required fields
+        request.resource.data.keys().hasAll(['customerName', 'phone', 'wilaya', 'baladiya', 'address', 'price', 'quantity', 'status']) &&
+        // Validate data types
+        request.resource.data.customerName is string &&
+        request.resource.data.phone is string &&
+        request.resource.data.price is number &&
+        request.resource.data.quantity is number &&
+        // Validate logic
+        request.resource.data.status == 'pending' &&
+        request.resource.data.quantity > 0 &&
+        request.resource.data.price == (request.resource.data.quantity * 3700);
+        
       allow get: if true;
       allow list, update, delete: if isAdmin() || isModerator();
     }
